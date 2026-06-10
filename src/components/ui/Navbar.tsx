@@ -42,12 +42,6 @@ export function NavBar() {
             </div>
           </nav>
           <Button
-            variant="secondary"
-            className="hidden h-10 font-semibold sm:block"
-          >
-            Get a quote
-          </Button>
-          <Button
             onClick={() => setOpen(!open)}
             variant="secondary"
             className="p-1.5 sm:hidden"
@@ -83,9 +77,6 @@ export function NavBar() {
               <Link href="#solar-analytics">Analytics</Link>
             </li>
           </ul>
-          <Button variant="secondary" className="text-lg">
-            Get a quote
-          </Button>
         </nav>
       </div>
     </header>
