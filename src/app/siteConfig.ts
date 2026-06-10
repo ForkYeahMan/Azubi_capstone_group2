@@ -5,4 +5,4 @@ export const siteConfig = {
   baseLinks: {
     home: "/",
   },
-}
+};

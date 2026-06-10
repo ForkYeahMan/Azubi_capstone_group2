@@ -1,13 +1,13 @@
-import { cx } from "@/lib/utils"
+import { cx } from "@/lib/utils";
 
 export const StickerCard = ({
   title,
   description,
   Icon,
 }: {
-  title: string
-  description: string
-  Icon: React.ElementType
+  title: string;
+  description: string;
+  Icon: React.ElementType;
 }) => (
   <div className="relative">
     <a
@@ -27,4 +27,4 @@ export const StickerCard = ({
       </div>
     </a>
   </div>
-)
+);

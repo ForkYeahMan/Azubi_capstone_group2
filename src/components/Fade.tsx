@@ -1,5 +1,5 @@
-"use client"
-import { motion } from "motion/react"
+"use client";
+import { motion } from "motion/react";
 
 const container = {
   hidden: {},
@@ -9,7 +9,7 @@ const container = {
       delayChildren: 0.2,
     },
   },
-} as const
+} as const;
 
 const item = {
   hidden: {
@@ -29,7 +29,7 @@ const item = {
       mass: 1.2,
     },
   },
-} as const
+} as const;
 
 function FadeContainer({
   children,
@@ -44,35 +44,35 @@ function FadeContainer({
     >
       {children}
     </motion.div>
-  )
+  );
 }
 
 function FadeDiv({
   children,
   className,
 }: {
-  children: React.ReactNode
-  className?: string
+  children: React.ReactNode;
+  className?: string;
 }) {
   return (
     <motion.div variants={item} className={className}>
       {children}
     </motion.div>
-  )
+  );
 }
 
 function FadeSpan({
   children,
   className,
 }: {
-  children: React.ReactNode
-  className?: string
+  children: React.ReactNode;
+  className?: string;
 }) {
   return (
     <motion.span variants={item} className={className}>
       {children}
     </motion.span>
-  )
+  );
 }
 
-export { FadeContainer, FadeDiv, FadeSpan }
+export { FadeContainer, FadeDiv, FadeSpan };

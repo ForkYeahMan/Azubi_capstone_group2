@@ -1,6 +1,6 @@
-import { RiArrowRightUpLine } from "@remixicon/react"
-import { FadeContainer, FadeDiv, FadeSpan } from "../Fade"
-import GameOfLife from "./HeroBackground"
+import { RiArrowRightUpLine } from "@remixicon/react";
+import { FadeContainer, FadeDiv, FadeSpan } from "../Fade";
+import GameOfLife from "./HeroBackground";
 
 export function Hero() {
   return (
@@ -51,5 +51,5 @@ export function Hero() {
         </div>
       </FadeContainer>
     </section>
-  )
+  );
 }

@@ -1,11 +1,11 @@
-import { Icons } from "@/components/Icons"
+import { Icons } from "@/components/Icons";
 import {
   RiHome9Fill,
   RiPlaneLine,
   RiSignalTowerFill,
   RiTruckFill,
-} from "@remixicon/react"
-import { SVGMap } from "./SVGMap"
+} from "@remixicon/react";
+import { SVGMap } from "./SVGMap";
 
 export const Map = () => {
   return (
@@ -30,7 +30,7 @@ export const Map = () => {
               height="64"
             >
               {Array.from({ length: 17 }, (_, i) => {
-                const offset = i * 8
+                const offset = i * 8;
                 return (
                   <path
                     key={i}
@@ -38,7 +38,7 @@ export const Map = () => {
                     stroke=""
                     strokeWidth="1"
                   />
-                )
+                );
               })}
             </pattern>
           </defs>
@@ -65,7 +65,7 @@ export const Map = () => {
               height="64"
             >
               {Array.from({ length: 17 }, (_, i) => {
-                const offset = i * 8
+                const offset = i * 8;
                 return (
                   <path
                     key={i}
@@ -73,7 +73,7 @@ export const Map = () => {
                     stroke=""
                     strokeWidth="1"
                   />
-                )
+                );
               })}
             </pattern>
           </defs>
@@ -170,5 +170,5 @@ export const Map = () => {
         </div>
       </div>
     </section>
-  )
-}
+  );
+};

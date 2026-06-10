@@ -1,4 +1,4 @@
-import { Divider } from "../Divider"
+import { Divider } from "../Divider";
 
 export default function FeatureDivider({ className }: { className?: string }) {
   return (
@@ -48,5 +48,5 @@ export default function FeatureDivider({ className }: { className?: string }) {
         />
       </div>
     </Divider>
-  )
+  );
 }

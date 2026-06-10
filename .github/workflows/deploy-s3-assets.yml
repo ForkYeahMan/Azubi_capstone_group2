@@ -1,25 +1,26 @@
 name: Deploy Static Assets to S3
 
 # Runs only when code lands on main (after PR checks pass via branch protection).
-# Uploads /_next/static and /public to S3 for CDN serving, then packages
-# the standalone build as a versioned release artifact for the EC2 deploy job.
+# Flow: build → upload to s3://bucket/frontend/ → SSM sync on both EC2s → CloudFront invalidation
 on:
   push:
     branches: [main]
 
+env:
+  BUCKET: group-2-286664220957-us-east-1-an
+  REGION: us-east-1
+
 jobs:
-  deploy-assets:
-    name: Build & Upload to S3
+  deploy:
+    name: Build → S3 → EC2 → CloudFront
     runs-on: ubuntu-latest
-    outputs:
-      sha: ${{ github.sha }}
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 10
 
       - uses: actions/setup-node@v4
         with:
@@ -29,54 +30,128 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build Next.js
+      # next build with output:export writes the full static site to out/
+      - name: Build static export
         run: pnpm build
-        env:
-          # Tells Next.js to load /_next/static/* from S3 instead of the EC2 server.
-          # Format: https://<bucket>.s3.<region>.amazonaws.com
-          NEXT_PUBLIC_ASSET_PREFIX: ${{ secrets.S3_ASSET_BASE_URL }}
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          aws-region: ${{ env.REGION }}
 
-      # JS/CSS chunks — immutable because filenames are content-hashed by Next.js
-      - name: Upload _next/static to S3
+      # Upload the full out/ directory to the frontend/ prefix.
+      # Two passes so hashed JS/CSS chunks get long-lived immutable headers
+      # while HTML files get must-revalidate so CloudFront always re-fetches them.
+      - name: Upload to S3 — JS/CSS (immutable)
         run: |
-          aws s3 sync .next/static \
-            s3://${{ secrets.S3_BUCKET_NAME }}/_next/static \
-            --cache-control "public, max-age=31536000, immutable" \
-            --delete
+          aws s3 sync out/_next/ \
+            s3://${{ env.BUCKET }}/frontend/_next/ \
+            --delete \
+            --cache-control "public, max-age=31536000, immutable"
 
-      # Images, fonts, and other public assets — shorter TTL since filenames aren't hashed
-      - name: Upload public/ to S3
+      - name: Upload to S3 — HTML and public assets
         run: |
-          aws s3 sync public \
-            s3://${{ secrets.S3_BUCKET_NAME }}/public \
-            --cache-control "public, max-age=86400" \
-            --delete
+          aws s3 sync out/ \
+            s3://${{ env.BUCKET }}/frontend/ \
+            --delete \
+            --exclude "_next/*" \
+            --cache-control "public, max-age=0, must-revalidate"
 
-      # Package the standalone build for EC2.
-      # Copy static + public into the standalone folder first (Next.js requirement).
-      - name: Package standalone build
+      # ── EC2 sync via SSM ────────────────────────────────────────────────────
+      # Finds instances tagged Project=group-2, sends the sync + restart
+      # command to all of them in parallel, then waits for each to succeed.
+      # Requires: EC2 instances have SSM Agent running + instance profile with
+      #           AmazonSSMManagedInstanceCore + s3:GetObject on the bucket.
+      - name: SSM — sync S3 to EC2 and restart Apache
         run: |
-          cp -r .next/static .next/standalone/.next/static
-          cp -r public .next/standalone/public
-          tar -czf release.tar.gz -C .next/standalone .
+          set -euo pipefail
 
-      - name: Upload release artifact to S3
-        run: |
-          aws s3 cp release.tar.gz \
-            s3://${{ secrets.S3_BUCKET_NAME }}/releases/${{ github.sha }}.tar.gz
+          # Discover running instance IDs by tag
+          INSTANCE_IDS=$(aws ec2 describe-instances \
+            --filters \
+              "Name=tag:Project,Values=group-2" \
+              "Name=instance-state-name,Values=running" \
+            --query "Reservations[].Instances[].InstanceId" \
+            --output text \
+            --region ${{ env.REGION }})
 
-      # Keep only the 10 most recent releases to avoid unbounded S3 growth
-      - name: Prune old release artifacts
+          if [ -z "$INSTANCE_IDS" ]; then
+            echo "No running instances found with tag Project=group-2"
+            exit 1
+          fi
+
+          echo "Target instances: $INSTANCE_IDS"
+
+          # Send the command to all instances at once
+          COMMAND_ID=$(aws ssm send-command \
+            --document-name "AWS-RunShellScript" \
+            --instance-ids $INSTANCE_IDS \
+            --parameters 'commands=[
+              "aws s3 sync s3://group-2-286664220957-us-east-1-an/frontend/ /var/www/html/ --delete --region us-east-1",
+              "systemctl restart httpd"
+            ]' \
+            --comment "Deploy ${{ github.sha }}" \
+            --region ${{ env.REGION }} \
+            --query "Command.CommandId" \
+            --output text)
+
+          echo "SSM Command ID: $COMMAND_ID"
+
+          # Wait for each instance and fail fast if any instance errors
+          for INSTANCE_ID in $INSTANCE_IDS; do
+            echo "Waiting for $INSTANCE_ID..."
+            aws ssm wait command-executed \
+              --command-id "$COMMAND_ID" \
+              --instance-id "$INSTANCE_ID" \
+              --region ${{ env.REGION }}
+
+            STATUS=$(aws ssm get-command-invocation \
+              --command-id "$COMMAND_ID" \
+              --instance-id "$INSTANCE_ID" \
+              --query "Status" \
+              --output text \
+              --region ${{ env.REGION }})
+
+            OUTPUT=$(aws ssm get-command-invocation \
+              --command-id "$COMMAND_ID" \
+              --instance-id "$INSTANCE_ID" \
+              --query "StandardOutputContent" \
+              --output text \
+              --region ${{ env.REGION }})
+
+            echo "=== $INSTANCE_ID ($STATUS) ==="
+            echo "$OUTPUT"
+
+            if [ "$STATUS" != "Success" ]; then
+              ERROR=$(aws ssm get-command-invocation \
+                --command-id "$COMMAND_ID" \
+                --instance-id "$INSTANCE_ID" \
+                --query "StandardErrorContent" \
+                --output text \
+                --region ${{ env.REGION }})
+              echo "STDERR: $ERROR"
+              echo "Deploy failed on $INSTANCE_ID"
+              exit 1
+            fi
+          done
+
+          echo "All instances synced successfully"
+
+      # ── CloudFront cache invalidation ────────────────────────────────────────
+      # Invalidates /* so CloudFront immediately serves the new HTML.
+      # JS/CSS files have hashed names so they don't need explicit invalidation.
+      # Requires secret: CLOUDFRONT_DISTRIBUTION_ID
+      - name: Invalidate CloudFront cache
+        env:
+          CLOUDFRONT_DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
         run: |
-          aws s3 ls s3://${{ secrets.S3_BUCKET_NAME }}/releases/ \
-            | awk '{print $4}' \
-            | sort \
-            | head -n -10 \
-            | xargs -I {} aws s3 rm s3://${{ secrets.S3_BUCKET_NAME }}/releases/{} || true
+          INVALIDATION_ID=$(aws cloudfront create-invalidation \
+            --distribution-id "$CLOUDFRONT_DISTRIBUTION_ID" \
+            --paths "/*" \
+            --query "Invalidation.Id" \
+            --output text)
+
+          echo "Invalidation ID: $INVALIDATION_ID"
+          echo "Note: invalidation typically completes in 1-2 minutes."

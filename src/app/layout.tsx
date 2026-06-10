@@ -1,10 +1,10 @@
-import { GeistSans } from "geist/font/sans"
-import type { Metadata } from "next"
-import "./globals.css"
+import { GeistSans } from "geist/font/sans";
+import type { Metadata } from "next";
+import "./globals.css";
 
-import Footer from "@/components/ui/Footer"
-import { NavBar } from "@/components/ui/Navbar"
-import { siteConfig } from "./siteConfig"
+import Footer from "@/components/ui/Footer";
+import { NavBar } from "@/components/ui/Navbar";
+import { siteConfig } from "./siteConfig";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://yoururl.com"),
@@ -35,12 +35,12 @@ export const metadata: Metadata = {
   icons: {
     icon: "/favicon.ico",
   },
-}
+};
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode
+  children: React.ReactNode;
 }>) {
   return (
     <html lang="en">
@@ -52,5 +52,5 @@ export default function RootLayout({
         <Footer />
       </body>
     </html>
-  )
+  );
 }

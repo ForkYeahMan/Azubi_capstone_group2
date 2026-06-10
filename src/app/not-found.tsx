@@ -1,8 +1,8 @@
-import { Button } from "@/components/Button"
-import Link from "next/link"
-import { siteConfig } from "./siteConfig"
+import { Button } from "@/components/Button";
+import Link from "next/link";
+import { siteConfig } from "./siteConfig";
 
-import { SolarLogo } from "../../public/SolarLogo"
+import { SolarLogo } from "../../public/SolarLogo";
 
 export default function NotFound() {
   return (
@@ -23,5 +23,5 @@ export default function NotFound() {
         <Link href={siteConfig.baseLinks.home}>Go to the home page</Link>
       </Button>
     </div>
-  )
+  );
 }

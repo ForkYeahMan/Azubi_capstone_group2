@@ -1,4 +1,4 @@
-import { LineChartIllustration } from "../../../public/images/LineChartIllustration"
+import { LineChartIllustration } from "../../../public/images/LineChartIllustration";
 import {
   Table,
   TableBody,
@@ -7,7 +7,7 @@ import {
   TableHeaderCell,
   TableRoot,
   TableRow,
-} from "../Table"
+} from "../Table";
 
 const summary = [
   {
@@ -43,7 +43,7 @@ const summary = [
     bgColor: "bg-yellow-400",
     changeType: "negative",
   },
-]
+];
 
 export default function FieldPerformance() {
   return (
@@ -137,5 +137,5 @@ export default function FieldPerformance() {
         </TableRoot>
       </div>
     </div>
-  )
+  );
 }

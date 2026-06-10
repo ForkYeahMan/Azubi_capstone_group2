@@ -3,10 +3,10 @@ import {
   RiSlackFill,
   RiTwitterXFill,
   RiYoutubeFill,
-} from "@remixicon/react"
-import Link from "next/link"
-import { SolarLogo } from "../../../public/SolarLogo"
-const CURRENT_YEAR = new Date().getFullYear()
+} from "@remixicon/react";
+import Link from "next/link";
+import { SolarLogo } from "../../../public/SolarLogo";
+const CURRENT_YEAR = new Date().getFullYear();
 
 const Footer = () => {
   const sections = {
@@ -57,7 +57,7 @@ const Footer = () => {
         { label: "Integration Guide", href: "#" },
       ],
     },
-  }
+  };
 
   return (
     <div className="px-4 xl:px-0">
@@ -122,7 +122,7 @@ const Footer = () => {
               height="64"
             >
               {Array.from({ length: 17 }, (_, i) => {
-                const offset = i * 8
+                const offset = i * 8;
                 return (
                   <path
                     key={i}
@@ -130,7 +130,7 @@ const Footer = () => {
                     stroke=""
                     strokeWidth="1"
                   />
-                )
+                );
               })}
             </pattern>
           </defs>
@@ -215,7 +215,7 @@ const Footer = () => {
         ))}
       </footer>
     </div>
-  )
-}
+  );
+};
 
-export default Footer
+export default Footer;

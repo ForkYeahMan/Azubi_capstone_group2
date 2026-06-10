@@ -1,4 +1,4 @@
-import Image from "next/image"
+import Image from "next/image";
 
 export default function Testimonial() {
   return (
@@ -56,5 +56,5 @@ export default function Testimonial() {
         </div>
       </div>
     </section>
-  )
+  );
 }

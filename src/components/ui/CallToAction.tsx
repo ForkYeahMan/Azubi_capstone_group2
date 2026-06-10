@@ -1,6 +1,6 @@
-import Image from "next/image"
-import Link from "next/link"
-import { Button } from "../Button"
+import Image from "next/image";
+import Link from "next/link";
+import { Button } from "../Button";
 
 export function CallToAction() {
   return (
@@ -45,7 +45,7 @@ export function CallToAction() {
         </div>
       </div>
     </section>
-  )
+  );
 }
 
-export default CallToAction
+export default CallToAction;

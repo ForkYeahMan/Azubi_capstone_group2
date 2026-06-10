@@ -1,14 +1,14 @@
-"use client"
-import { motion, Variants } from "motion/react"
-import { SolarMark } from "../../../public/SolarMark"
+"use client";
+import { motion, Variants } from "motion/react";
+import { SolarMark } from "../../../public/SolarMark";
 
 const ChipViz = () => {
   const createVariants = ({
     scale,
     delay,
   }: {
-    scale: number
-    delay: number
+    scale: number;
+    delay: number;
   }): Variants => ({
     initial: { scale: 1 },
     animate: {
@@ -22,7 +22,7 @@ const ChipViz = () => {
         delay,
       },
     },
-  })
+  });
 
   return (
     <div className="relative flex items-center">
@@ -68,7 +68,7 @@ const ChipViz = () => {
         </motion.div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default ChipViz
+export default ChipViz;

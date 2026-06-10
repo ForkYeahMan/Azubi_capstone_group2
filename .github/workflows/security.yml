@@ -18,7 +18,7 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 10
 
       - uses: actions/setup-node@v4
         with:
@@ -28,9 +28,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # Fails the job on high or critical severity vulnerabilities
+      # Only scans production deps — dev tool vulns (eslint, tailwind build chain)
+      # are not exploitable at runtime and would produce noise.
       - name: Run pnpm audit
-        run: pnpm audit --audit-level=high
+        run: pnpm audit --prod --audit-level=high
 
   dependency-review:
     name: Dependency Review
@@ -55,7 +56,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Scan for secrets (Gitleaks)
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # TruffleHog is free for all repo types (no license required)
+      - name: Scan for secrets (TruffleHog)
+        uses: trufflesecurity/trufflehog@main
+        with:
+          extra_args: --only-verified

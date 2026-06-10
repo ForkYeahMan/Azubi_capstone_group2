@@ -1,16 +1,16 @@
 interface OrbitingObjectProps {
   /** Radius of the orbit in pixels */
-  radiusPx?: number
+  radiusPx?: number;
   /** Center element */
-  children: React.ReactNode
+  children: React.ReactNode;
   /** Array of elements to orbit around the center */
-  orbitingObjects: React.ReactNode[]
+  orbitingObjects: React.ReactNode[];
   /** Default size of orbiting objects (in pixels) for positioning */
-  defaultObjectSize?: number
+  defaultObjectSize?: number;
   /** Duration of one complete orbit in seconds */
-  durationSeconds?: number
+  durationSeconds?: number;
   /** Keep orbiting upright */
-  keepUpright?: boolean
+  keepUpright?: boolean;
 }
 
 export const Orbit = ({
@@ -21,12 +21,12 @@ export const Orbit = ({
   durationSeconds = 8,
   keepUpright = false,
 }: OrbitingObjectProps) => {
-  const orbitDiameter = radiusPx * 2
-  const containerSize = orbitDiameter + defaultObjectSize
-  const initialOffset = radiusPx + defaultObjectSize / 2
+  const orbitDiameter = radiusPx * 2;
+  const containerSize = orbitDiameter + defaultObjectSize;
+  const initialOffset = radiusPx + defaultObjectSize / 2;
 
   const positionedObjects = orbitingObjects.map((object, index) => {
-    const delaySeconds = -(index * (durationSeconds / orbitingObjects.length))
+    const delaySeconds = -(index * (durationSeconds / orbitingObjects.length));
 
     return (
       <div
@@ -64,8 +64,8 @@ export const Orbit = ({
           {object}
         </div>
       </div>
-    )
-  })
+    );
+  });
 
   return (
     <div
@@ -90,5 +90,5 @@ export const Orbit = ({
       {/* Center object (children) */}
       {children}
     </div>
-  )
-}
+  );
+};

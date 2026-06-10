@@ -9,11 +9,11 @@ import {
   RiNotification2Line,
   RiPlaneFill,
   RiTruckFill,
-} from "@remixicon/react"
-import { SolarMark } from "../../../public/SolarMark"
-import { Icons } from "../Icons"
-import { Orbit } from "../Orbit"
-import ChipViz from "./ChipViz"
+} from "@remixicon/react";
+import { SolarMark } from "../../../public/SolarMark";
+import { Icons } from "../Icons";
+import { Orbit } from "../Orbit";
+import ChipViz from "./ChipViz";
 
 export default function Features() {
   return (
@@ -158,7 +158,7 @@ export default function Features() {
                 height="64"
               >
                 {Array.from({ length: 17 }, (_, i) => {
-                  const offset = i * 8
+                  const offset = i * 8;
                   return (
                     <path
                       key={i}
@@ -166,7 +166,7 @@ export default function Features() {
                       className="stroke-gray-200/70"
                       strokeWidth="1"
                     />
-                  )
+                  );
                 })}
               </pattern>
             </defs>
@@ -321,7 +321,7 @@ export default function Features() {
                 height="64"
               >
                 {Array.from({ length: 17 }, (_, i) => {
-                  const offset = i * 8
+                  const offset = i * 8;
                   return (
                     <path
                       key={i}
@@ -329,7 +329,7 @@ export default function Features() {
                       className="stroke-gray-200/70"
                       strokeWidth="1"
                     />
-                  )
+                  );
                 })}
               </pattern>
             </defs>
@@ -456,7 +456,7 @@ export default function Features() {
                 height="64"
               >
                 {Array.from({ length: 17 }, (_, i) => {
-                  const offset = i * 8
+                  const offset = i * 8;
                   return (
                     <path
                       key={i}
@@ -464,7 +464,7 @@ export default function Features() {
                       className="stroke-gray-200/70"
                       strokeWidth="1"
                     />
-                  )
+                  );
                 })}
               </pattern>
             </defs>
@@ -544,5 +544,5 @@ export default function Features() {
         </div>
       </div>
     </section>
-  )
+  );
 }

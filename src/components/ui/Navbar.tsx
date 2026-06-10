@@ -1,17 +1,17 @@
-"use client"
+"use client";
 
-import { siteConfig } from "@/app/siteConfig"
-import useScroll from "@/lib/useScroll"
-import { cx } from "@/lib/utils"
-import { RiCloseFill, RiMenuFill } from "@remixicon/react"
-import Link from "next/link"
-import React from "react"
-import { SolarLogo } from "../../../public/SolarLogo"
-import { Button } from "../Button"
+import { siteConfig } from "@/app/siteConfig";
+import useScroll from "@/lib/useScroll";
+import { cx } from "@/lib/utils";
+import { RiCloseFill, RiMenuFill } from "@remixicon/react";
+import Link from "next/link";
+import React from "react";
+import { SolarLogo } from "../../../public/SolarLogo";
+import { Button } from "../Button";
 
 export function NavBar() {
-  const [open, setOpen] = React.useState(false)
-  const scrolled = useScroll(15)
+  const [open, setOpen] = React.useState(false);
+  const scrolled = useScroll(15);
 
   return (
     <header
@@ -80,5 +80,5 @@ export function NavBar() {
         </nav>
       </div>
     </header>
-  )
+  );
 }
