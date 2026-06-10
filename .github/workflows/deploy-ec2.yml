@@ -1,0 +1,98 @@
+name: Deploy to EC2
+
+# Fires after "Deploy Static Assets to S3" completes successfully on main.
+# Downloads the versioned release from S3 to each EC2 instance (no public
+# artifact transfer needed — EC2s reach S3 directly within the VPC).
+# Rolling deploy: EC2-1 is updated and health-checked before EC2-2 starts.
+on:
+  workflow_run:
+    workflows: ["Deploy Static Assets to S3"]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  deploy:
+    name: Deploy to ${{ matrix.label }}
+    runs-on: ubuntu-latest
+    # Only proceed when the upstream workflow succeeded
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    strategy:
+      max-parallel: 1  # rolling — keeps at least one instance healthy at all times
+      matrix:
+        include:
+          - label: EC2-1
+            host_secret: EC2_HOST_1
+          - label: EC2-2
+            host_secret: EC2_HOST_2
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      # The deploy script runs on each EC2 instance via SSH.
+      # EC2 instances must:
+      #   - Be SSH-reachable from GitHub Actions (public IP, Elastic IP, or via bastion)
+      #   - Have an IAM instance profile with s3:GetObject on the deploy bucket
+      #   - Have Node.js 20+ and PM2 installed
+      # Alternative: replace with AWS SSM Session Manager if EC2s are in private subnets.
+      - name: Deploy to ${{ matrix.label }}
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets[matrix.host_secret] }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+          # Pass commit SHA so the correct release artifact is fetched from S3
+          envs: GITHUB_SHA,S3_BUCKET_NAME,AWS_REGION
+          script_stop: true
+          script: |
+            set -euo pipefail
+
+            SHA="${{ github.event.workflow_run.head_sha }}"
+            APP_DIR=/opt/app
+            RELEASES_DIR=$APP_DIR/releases
+            RELEASE_DIR=$RELEASES_DIR/$SHA
+
+            echo "==> Downloading release $SHA from S3"
+            mkdir -p "$RELEASE_DIR"
+            aws s3 cp \
+              "s3://${{ secrets.S3_BUCKET_NAME }}/releases/$SHA.tar.gz" \
+              /tmp/release.tar.gz \
+              --region ${{ secrets.AWS_REGION }}
+
+            echo "==> Extracting release"
+            tar -xzf /tmp/release.tar.gz -C "$RELEASE_DIR"
+            rm -f /tmp/release.tar.gz
+
+            # Carry forward the .env.local if one exists on the server
+            [ -f "$APP_DIR/.env.local" ] && cp "$APP_DIR/.env.local" "$RELEASE_DIR/.env.local"
+
+            echo "==> Switching current symlink"
+            ln -sfn "$RELEASE_DIR" "$APP_DIR/current"
+
+            echo "==> Restarting application"
+            cd "$APP_DIR/current"
+            PORT=3000 pm2 describe nextjs-app > /dev/null 2>&1 \
+              && pm2 restart nextjs-app \
+              || pm2 start server.js --name nextjs-app -e /dev/null -o /dev/null
+            pm2 save
+
+            echo "==> Pruning old releases (keep last 5)"
+            ls -t "$RELEASES_DIR" | tail -n +6 | xargs -I {} rm -rf "$RELEASES_DIR/{}" || true
+
+            echo "==> Deploy complete"
+
+      - name: Health check ${{ matrix.label }}
+        run: |
+          HOST="${{ secrets[matrix.host_secret] }}"
+          for i in 1 2 3 4 5; do
+            echo "Attempt $i..."
+            curl -sf "http://$HOST:3000/" -o /dev/null && echo "OK" && exit 0
+            sleep 10
+          done
+          echo "Health check failed after 5 attempts"
+          exit 1

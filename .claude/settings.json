@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -sL -o /dev/null -w \"Final URL: %{url_effective}\\\\nHTTP Status: %{http_code}\\\\nTime to first byte: %{time_starttransfer}s\\\\nTotal time: %{time_total}s\\\\n\" http://group-2-alb-1333830676.us-east-1.elb.amazonaws.com/ --max-time 15)",
+      "Bash(curl -s -o /dev/null -w \"HTTP Status: %{http_code}\\\\nRedirect URL: %{redirect_url}\\\\nTime to connect: %{time_connect}s\\\\nTime to first byte: %{time_starttransfer}s\\\\nTotal time: %{time_total}s\\\\n\" http://group-2-alb-1333830676.us-east-1.elb.amazonaws.com/ --max-time 15)",
+      "Bash(curl -sk -o /dev/null -w \"HTTP Status: %{http_code}\\\\nFinal URL: %{url_effective}\\\\nTime to first byte: %{time_starttransfer}s\\\\nTotal time: %{time_total}s\\\\n\" https://group-2-alb-1333830676.us-east-1.elb.amazonaws.com/ --max-time 15)"
+    ]
+  }
+}

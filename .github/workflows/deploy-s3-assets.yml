@@ -1,0 +1,82 @@
+name: Deploy Static Assets to S3
+
+# Runs only when code lands on main (after PR checks pass via branch protection).
+# Uploads /_next/static and /public to S3 for CDN serving, then packages
+# the standalone build as a versioned release artifact for the EC2 deploy job.
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy-assets:
+    name: Build & Upload to S3
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ github.sha }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Next.js
+        run: pnpm build
+        env:
+          # Tells Next.js to load /_next/static/* from S3 instead of the EC2 server.
+          # Format: https://<bucket>.s3.<region>.amazonaws.com
+          NEXT_PUBLIC_ASSET_PREFIX: ${{ secrets.S3_ASSET_BASE_URL }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      # JS/CSS chunks — immutable because filenames are content-hashed by Next.js
+      - name: Upload _next/static to S3
+        run: |
+          aws s3 sync .next/static \
+            s3://${{ secrets.S3_BUCKET_NAME }}/_next/static \
+            --cache-control "public, max-age=31536000, immutable" \
+            --delete
+
+      # Images, fonts, and other public assets — shorter TTL since filenames aren't hashed
+      - name: Upload public/ to S3
+        run: |
+          aws s3 sync public \
+            s3://${{ secrets.S3_BUCKET_NAME }}/public \
+            --cache-control "public, max-age=86400" \
+            --delete
+
+      # Package the standalone build for EC2.
+      # Copy static + public into the standalone folder first (Next.js requirement).
+      - name: Package standalone build
+        run: |
+          cp -r .next/static .next/standalone/.next/static
+          cp -r public .next/standalone/public
+          tar -czf release.tar.gz -C .next/standalone .
+
+      - name: Upload release artifact to S3
+        run: |
+          aws s3 cp release.tar.gz \
+            s3://${{ secrets.S3_BUCKET_NAME }}/releases/${{ github.sha }}.tar.gz
+
+      # Keep only the 10 most recent releases to avoid unbounded S3 growth
+      - name: Prune old release artifacts
+        run: |
+          aws s3 ls s3://${{ secrets.S3_BUCKET_NAME }}/releases/ \
+            | awk '{print $4}' \
+            | sort \
+            | head -n -10 \
+            | xargs -I {} aws s3 rm s3://${{ secrets.S3_BUCKET_NAME }}/releases/{} || true
