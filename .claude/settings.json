@@ -7,7 +7,8 @@
       "Bash(pnpm install *)",
       "Bash(pnpm prettier *)",
       "Bash(pnpm audit *)",
-      "Bash(pnpm lint *)"
+      "Bash(pnpm lint *)",
+      "Bash(aws s3 *)"
     ]
   }
 }
