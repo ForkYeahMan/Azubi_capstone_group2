@@ -3,6 +3,7 @@ import Link from "next/link";
 import { siteConfig } from "./siteConfig";
 
 import { SolarLogo } from "../../public/SolarLogo";
+import NotFoundAnimation from '@/images/NotFoundAnimation';
 
 export default function NotFound() {
   return (
@@ -10,6 +11,11 @@ export default function NotFound() {
       <Link href={siteConfig.baseLinks.home}>
         <SolarLogo className="mt-6 h-10" />
       </Link>
+
+      <div className="mt-6">
+        <NotFoundAnimation width={300} height={300} />
+      </div>
+
       <p className="mt-6 text-4xl font-semibold text-amber-600 sm:text-5xl">
         404
       </p>
