@@ -135,13 +135,10 @@ jobs:
       # ── CloudFront cache invalidation ────────────────────────────────────────
       # Invalidates /* so CloudFront immediately serves the new HTML.
       # JS/CSS files have hashed names so they don't need explicit invalidation.
-      # Requires secret: CLOUDFRONT_DISTRIBUTION_ID
       - name: Invalidate CloudFront cache
-        env:
-          CLOUDFRONT_DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
         run: |
           INVALIDATION_ID=$(aws cloudfront create-invalidation \
-            --distribution-id "$CLOUDFRONT_DISTRIBUTION_ID" \
+            --distribution-id EQUKOALD35BEU \
             --paths "/*" \
             --query "Invalidation.Id" \
             --output text)
