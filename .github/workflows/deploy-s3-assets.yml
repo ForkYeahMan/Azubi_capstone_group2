@@ -82,7 +82,7 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --instance-ids $INSTANCE_IDS \
             --parameters 'commands=[
-              "aws s3 sync s3://group-2-286664220957-us-east-1-an/frontend/ /var/www/html/ --delete --region us-east-1",
+              "aws s3 sync s3://group-2-286664220957-us-east-1-an/frontend/ /var/www/html/ --delete --exact-timestamps --region us-east-1",
               "systemctl restart httpd"
             ]' \
             --comment "Deploy ${{ github.sha }}" \
