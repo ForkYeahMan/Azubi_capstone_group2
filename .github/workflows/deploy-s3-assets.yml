@@ -60,31 +60,24 @@ jobs:
             --cache-control "public, max-age=0, must-revalidate"
 
       # ── EC2 sync via SSM ────────────────────────────────────────────────────
-      # Finds instances tagged Project=group-2, sends the sync + restart
-      # command to all of them in parallel, then waits for each to succeed.
-      # Requires: EC2 instances have SSM Agent running + instance profile with
+      # Instance IDs are stored explicitly in EC2_INSTANCE_IDS secret
+      # (space-separated: "i-0bb2773ea9a6be95b i-0213095b44ff10b77").
+      # Requires: SSM Agent running on instances + instance profile with
       #           AmazonSSMManagedInstanceCore + s3:GetObject on the bucket.
       - name: SSM — sync S3 to EC2 and restart Apache
+        env:
+          INSTANCE_IDS: ${{ secrets.EC2_INSTANCE_IDS }}
         run: |
           set -euo pipefail
 
-          # Discover running instance IDs by tag
-          INSTANCE_IDS=$(aws ec2 describe-instances \
-            --filters \
-              "Name=tag:Project,Values=group-2" \
-              "Name=instance-state-name,Values=running" \
-            --query "Reservations[].Instances[].InstanceId" \
-            --output text \
-            --region ${{ env.REGION }})
-
           if [ -z "$INSTANCE_IDS" ]; then
-            echo "No running instances found with tag Project=group-2"
+            echo "EC2_INSTANCE_IDS secret is not set"
             exit 1
           fi
 
           echo "Target instances: $INSTANCE_IDS"
 
-          # Send the command to all instances at once
+          # Send the sync + restart command to both instances at once
           COMMAND_ID=$(aws ssm send-command \
             --document-name "AWS-RunShellScript" \
             --instance-ids $INSTANCE_IDS \
@@ -99,7 +92,7 @@ jobs:
 
           echo "SSM Command ID: $COMMAND_ID"
 
-          # Wait for each instance and fail fast if any instance errors
+          # Wait for each instance and fail fast if any errors
           for INSTANCE_ID in $INSTANCE_IDS; do
             echo "Waiting for $INSTANCE_ID..."
             aws ssm wait command-executed \
