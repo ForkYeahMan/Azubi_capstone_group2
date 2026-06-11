@@ -132,16 +132,6 @@ jobs:
 
           echo "All instances synced successfully"
 
-      # ── CloudFront cache invalidation ────────────────────────────────────────
-      # Invalidates /* so CloudFront immediately serves the new HTML.
-      # JS/CSS files have hashed names so they don't need explicit invalidation.
-      - name: Invalidate CloudFront cache
-        run: |
-          INVALIDATION_ID=$(aws cloudfront create-invalidation \
-            --distribution-id EQUKOALD35BEU \
-            --paths "/*" \
-            --query "Invalidation.Id" \
-            --output text)
-
-          echo "Invalidation ID: $INVALIDATION_ID"
-          echo "Note: invalidation typically completes in 1-2 minutes."
+      # CloudFront invalidation is not needed:
+      # - HTML uses max-age=0,must-revalidate so CloudFront always revalidates
+      # - JS/CSS chunks have content-hashed names so stale cache is never served
