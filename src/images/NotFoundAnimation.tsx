@@ -1,6 +1,6 @@
-'use client'
-import React, { useEffect, useRef } from 'react';
-import lottie from 'lottie-web';
+"use client";
+import React, { useEffect, useRef } from "react";
+import lottie from "lottie-web";
 
 type Props = {
   path?: string;
@@ -11,7 +11,7 @@ type Props = {
 };
 
 export default function NotFoundAnimation({
-  path = '/images/not-found.json',
+  path = "/images/not-found.json",
   width = 300,
   height = 300,
   loop = true,
@@ -23,7 +23,7 @@ export default function NotFoundAnimation({
     if (!container.current) return;
     const anim = lottie.loadAnimation({
       container: container.current,
-      renderer: 'svg',
+      renderer: "svg",
       loop,
       autoplay,
       path,
