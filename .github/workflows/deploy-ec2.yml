@@ -22,10 +22,8 @@ jobs:
       matrix:
         include:
           - label: EC2-1
-            instance_secret: EC2_INSTANCE_ID_1
             host_secret: EC2_HOST_1
           - label: EC2-2
-            instance_secret: EC2_INSTANCE_ID_2
             host_secret: EC2_HOST_2
 
     steps:
@@ -38,11 +36,24 @@ jobs:
 
       - name: Deploy to ${{ matrix.label }} via SSM
         env:
-          INSTANCE_ID: ${{ secrets[matrix.instance_secret] }}
+          HOST: ${{ secrets[matrix.host_secret] }}
           DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
           S3_BUCKET: ${{ secrets.S3_BUCKET_NAME }}
           DEPLOY_REGION: ${{ secrets.AWS_REGION }}
         run: |
+          # Resolve instance ID from the public IP stored in EC2_HOST_* secret
+          INSTANCE_ID=$(aws ec2 describe-instances \
+            --filters "Name=ip-address,Values=$HOST" \
+            --query 'Reservations[0].Instances[0].InstanceId' \
+            --output text)
+
+          if [ -z "$INSTANCE_ID" ] || [ "$INSTANCE_ID" = "None" ]; then
+            echo "Could not resolve instance ID for host $HOST"
+            exit 1
+          fi
+
+          echo "Instance ID: $INSTANCE_ID"
+
           # $DEPLOY_SHA/$S3_BUCKET/$DEPLOY_REGION expand on the runner.
           # \$ escapes pass through as literal $ for the remote shell.
           SCRIPT=$(cat <<REMOTE
