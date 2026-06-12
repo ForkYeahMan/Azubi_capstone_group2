@@ -1,8 +1,8 @@
 name: Deploy to EC2
 
 # Fires after "Deploy Static Assets to S3" completes successfully on main.
-# Downloads the versioned release from S3 to each EC2 instance (no public
-# artifact transfer needed — EC2s reach S3 directly within the VPC).
+# Downloads the versioned release from S3 to each EC2 instance via SSM
+# (no open port 22 needed — EC2s need AmazonSSMManagedInstanceCore IAM policy).
 # Rolling deploy: EC2-1 is updated and health-checked before EC2-2 starts.
 on:
   workflow_run:
@@ -22,8 +22,10 @@ jobs:
       matrix:
         include:
           - label: EC2-1
+            instance_secret: EC2_INSTANCE_ID_1
             host_secret: EC2_HOST_1
           - label: EC2-2
+            instance_secret: EC2_INSTANCE_ID_2
             host_secret: EC2_HOST_2
 
     steps:
@@ -34,57 +36,77 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      # The deploy script runs on each EC2 instance via SSH.
-      # EC2 instances must:
-      #   - Be SSH-reachable from GitHub Actions (public IP, Elastic IP, or via bastion)
-      #   - Have an IAM instance profile with s3:GetObject on the deploy bucket
-      #   - Have Node.js 20+ and PM2 installed
-      # Alternative: replace with AWS SSM Session Manager if EC2s are in private subnets.
-      - name: Deploy to ${{ matrix.label }}
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets[matrix.host_secret] }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
-          # Pass commit SHA so the correct release artifact is fetched from S3
-          envs: GITHUB_SHA,S3_BUCKET_NAME,AWS_REGION
-          script_stop: true
-          script: |
-            set -euo pipefail
+      - name: Deploy to ${{ matrix.label }} via SSM
+        env:
+          INSTANCE_ID: ${{ secrets[matrix.instance_secret] }}
+          DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
+          S3_BUCKET: ${{ secrets.S3_BUCKET_NAME }}
+          DEPLOY_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          # $DEPLOY_SHA/$S3_BUCKET/$DEPLOY_REGION expand on the runner.
+          # \$ escapes pass through as literal $ for the remote shell.
+          SCRIPT=$(cat <<REMOTE
+          set -euo pipefail
+          SHA="$DEPLOY_SHA"
+          S3_BUCKET="$S3_BUCKET"
+          REGION="$DEPLOY_REGION"
+          APP_DIR=/opt/app
+          RELEASES_DIR=\$APP_DIR/releases
+          RELEASE_DIR=\$RELEASES_DIR/\$SHA
 
-            SHA="${{ github.event.workflow_run.head_sha }}"
-            APP_DIR=/opt/app
-            RELEASES_DIR=$APP_DIR/releases
-            RELEASE_DIR=$RELEASES_DIR/$SHA
+          echo "==> Downloading release \$SHA from S3"
+          mkdir -p "\$RELEASE_DIR"
+          aws s3 cp "s3://\$S3_BUCKET/releases/\$SHA.tar.gz" /tmp/release.tar.gz --region "\$REGION"
 
-            echo "==> Downloading release $SHA from S3"
-            mkdir -p "$RELEASE_DIR"
-            aws s3 cp \
-              "s3://${{ secrets.S3_BUCKET_NAME }}/releases/$SHA.tar.gz" \
-              /tmp/release.tar.gz \
-              --region ${{ secrets.AWS_REGION }}
+          echo "==> Extracting release"
+          tar -xzf /tmp/release.tar.gz -C "\$RELEASE_DIR"
+          rm -f /tmp/release.tar.gz
 
-            echo "==> Extracting release"
-            tar -xzf /tmp/release.tar.gz -C "$RELEASE_DIR"
-            rm -f /tmp/release.tar.gz
+          [ -f "\$APP_DIR/.env.local" ] && cp "\$APP_DIR/.env.local" "\$RELEASE_DIR/.env.local"
 
-            # Carry forward the .env.local if one exists on the server
-            [ -f "$APP_DIR/.env.local" ] && cp "$APP_DIR/.env.local" "$RELEASE_DIR/.env.local"
+          echo "==> Switching current symlink"
+          ln -sfn "\$RELEASE_DIR" "\$APP_DIR/current"
 
-            echo "==> Switching current symlink"
-            ln -sfn "$RELEASE_DIR" "$APP_DIR/current"
+          echo "==> Restarting application"
+          cd "\$APP_DIR/current"
+          PORT=3000 pm2 describe nextjs-app > /dev/null 2>&1 && pm2 restart nextjs-app || pm2 start server.js --name nextjs-app -e /dev/null -o /dev/null
+          pm2 save
 
-            echo "==> Restarting application"
-            cd "$APP_DIR/current"
-            PORT=3000 pm2 describe nextjs-app > /dev/null 2>&1 \
-              && pm2 restart nextjs-app \
-              || pm2 start server.js --name nextjs-app -e /dev/null -o /dev/null
-            pm2 save
+          echo "==> Pruning old releases (keep last 5)"
+          ls -t "\$RELEASES_DIR" | tail -n +6 | xargs -I {} rm -rf "\$RELEASES_DIR/{}" || true
 
-            echo "==> Pruning old releases (keep last 5)"
-            ls -t "$RELEASES_DIR" | tail -n +6 | xargs -I {} rm -rf "$RELEASES_DIR/{}" || true
+          echo "==> Deploy complete"
+          REMOTE
+          )
 
-            echo "==> Deploy complete"
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --parameters "$(printf '{"commands":[%s]}' "$(echo "$SCRIPT" | jq -Rs .)")" \
+            --query 'Command.CommandId' \
+            --output text)
+
+          echo "SSM Command ID: $COMMAND_ID"
+
+          aws ssm wait command-executed \
+            --command-id "$COMMAND_ID" \
+            --instance-id "$INSTANCE_ID"
+
+          STATUS=$(aws ssm get-command-invocation \
+            --command-id "$COMMAND_ID" \
+            --instance-id "$INSTANCE_ID" \
+            --query 'Status' \
+            --output text)
+
+          if [ "$STATUS" != "Success" ]; then
+            echo "==> Deploy failed. Remote stderr:"
+            aws ssm get-command-invocation \
+              --command-id "$COMMAND_ID" \
+              --instance-id "$INSTANCE_ID" \
+              --query 'StandardErrorContent' \
+              --output text
+            exit 1
+          fi
 
       - name: Health check ${{ matrix.label }}
         run: |
