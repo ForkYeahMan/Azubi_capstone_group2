@@ -1,0 +1,15 @@
+# Copy to terraform.tfvars and fill in. terraform.tfvars is gitignored below.
+
+# aws_profile = "personal"
+# region      = "us-east-1"
+
+# Required only if enable_database = true and you let Terraform create the cluster.
+# db_master_password = "change-me-strong-password"
+
+# Reuse the existing issued cert (default). Set to null to create a new one you
+# must DNS-validate manually.
+# existing_certificate_arn = "arn:aws:acm:us-east-1:286664220957:certificate/3f82af42-4019-4f87-a67d-cceca2b9b4bb"
+
+# Toggle expensive / slow pieces while iterating:
+# enable_cloudfront = false
+# enable_database   = false
