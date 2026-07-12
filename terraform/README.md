@@ -8,7 +8,7 @@ so you can tear it down to save money and bring it back later.
 | Layer     | Resources |
 |-----------|-----------|
 | Network   | VPC `10.0.0.0/16`, 2 public subnets (us-east-1a/1b), IGW, route table, `group-2-SG` |
-| Compute   | 3× `t3.small` EC2 (Amazon Linux 2023) + instance profile with SSM + S3 read |
+| Compute   | 2× fixed `t3.small` EC2 (Amazon Linux 2023) **+ an Auto Scaling Group** (`Group-2-Templates` launch template, min 1 / max 4 / desired 1), instance profile with SSM + S3 read |
 | Ingress   | Application Load Balancer, HTTP:80 + HTTPS:443 listeners, `group-2-tg-http` |
 | Frontend  | S3 bucket, CloudFront distribution (S3 `/frontend` + ALB origins), ACM cert |
 | Database  | Aurora PostgreSQL 17.7 Serverless v2 (0–4 ACU, scale-to-zero) |
@@ -38,12 +38,10 @@ terraform apply -var enable_cloudfront=false -var enable_database=false
 
 ## ⚠️ Read before you rely on this
 
-1. **This config creates the stack from scratch.** The resources it describes are
-   still live and were built by hand, so a first `apply` into the same account
-   will collide on names (S3 bucket, IAM role, ALB, etc.). Choose one:
-   - **Adopt the current stack** — `terraform import` each existing resource into
-     state (see below), then future `apply`/`destroy` manage them cleanly; **or**
-   - **Start fresh** — delete the hand-built resources, then `apply`.
+1. **The hand-built stack was fully destroyed on 2026-07-12**, so a fresh
+   `terraform apply` now creates everything cleanly with no name collisions —
+   this is the intended path. (If you ever need to adopt live resources instead
+   of recreating them, `terraform import` commands are at the bottom of this file.)
 
 2. **EC2 instances come up bare.** The AMI is stock Amazon Linux 2023 — none of
    your app is baked in. After `apply`, redeploy via your GitHub Actions pipeline

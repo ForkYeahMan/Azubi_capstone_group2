@@ -41,9 +41,33 @@ variable "instance_type" {
 }
 
 variable "instance_count" {
-  description = "How many backend EC2 instances to run (all are registered to the ALB target group)."
+  description = "How many FIXED (non-ASG) backend EC2 instances to run, all registered to the ALB target group. The live account had 2 fixed instances (group-2-1, group-2-2) plus the ASG below."
   type        = number
-  default     = 3
+  default     = 2
+}
+
+variable "enable_asg" {
+  description = "Whether to create the Auto Scaling Group + launch template (see asg.tf) in addition to the fixed instances."
+  type        = bool
+  default     = true
+}
+
+variable "asg_min_size" {
+  description = "ASG minimum size."
+  type        = number
+  default     = 1
+}
+
+variable "asg_max_size" {
+  description = "ASG maximum size."
+  type        = number
+  default     = 4
+}
+
+variable "asg_desired_capacity" {
+  description = "ASG desired capacity."
+  type        = number
+  default     = 1
 }
 
 variable "key_name" {
